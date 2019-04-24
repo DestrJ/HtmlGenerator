@@ -7,5 +7,6 @@ $baseSourceUrls = array(
     'https://ld-wp.template-help.com/rockthemes/19504/blog/' => 'blog.html',
 );
 
-$hc = new HtmlGenerator($baseSourceUrls, dirname(__FILE__) . DIRECTORY_SEPARATOR . 'project');
-$hc->createHtmlFiles();
+$hg = new HtmlGenerator($baseSourceUrls, dirname(__FILE__) . DIRECTORY_SEPARATOR . 'project');
+// $hg->createHtmlFiles();
+$hg->doConversion();

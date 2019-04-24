@@ -63,7 +63,86 @@ class HtmlGenerator {
         }
     }
 
+    private function saveDomDocumentHtmlFiles () {
+        if ( empty( $this->baseSourceUrls ) ) {
+            return;
+        }
+        foreach ($this->htmlFilesDomRepresent as $filename => $domDoc) {
+            $domDoc->saveHTMLFile($this->projectFolderPath . DIRECTORY_SEPARATOR . $filename);
+        }
+    }
 
+    private function downloadRelativeFiles ( $REGEX, $htmlTag, $tagAttr, $fileTypeName ) {
+        if ( empty($this->htmlFilesDomRepresent) ) {
+            return;
+        }
+
+        if ( !file_exists( $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName ) ) {
+            mkdir( $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName, 0755, true );
+        } 
+
+        foreach ($this->htmlFilesDomRepresent as $fileName => $domDoc) {
+            $fileLinkArray = $domDoc->getElementsByTagName($htmlTag);
+            if ( empty($fileLinkArray) ) {
+                continue;
+            }
+            foreach ($fileLinkArray as $fileLink) {
+                $src = $fileLink->getAttribute($tagAttr);                
+                if ( empty( $src ) ){
+                    continue;
+                }
+                $matches = array();
+                preg_match( $REGEX, $src, $matches );                
+                if ( empty( $matches ) ) {
+                    continue;
+                }
+                $fileExtension = pathinfo($matches[0], PATHINFO_EXTENSION);
+                if ( array_key_exists( $src, $this->linkStorage[$fileTypeName] ) ){
+                    continue;
+                }
+                if ( in_array( $matches[0], $this->linkStorage[$fileTypeName] ) ) {
+                    $file_counter = 1;
+                    $fileName = $matches[0];                    
+                    $fileNumbPos = strpos($fileName, '.'. $fileExtension);    
+                    do {
+                        $newFileName = substr( $fileName, 0, $fileNumbPos ) . $file_counter . '.' .$fileExtension;
+                        $filePath = $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName . DIRECTORY_SEPARATOR . $newFileName;
+                        $file_counter++;
+                    } while ( file_exists( $filePath ) );
+                    if ( $this->isFullMediaUrl ) {
+                        $this->downloadFile($src, $filePath);
+                    } else {
+                        $this->downloadFile($this->fixUrlForDownload( $src ), $filePath);
+                    }
+                    $this->linkStorage[$fileTypeName][$src] = $fileName;
+                    $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $newFileName);
+                } else {
+                    $this->linkStorage[$fileTypeName][$src] = $matches[0];
+                    if ( $this->isFullMediaUrl ) {
+                        $this->downloadFile($src, $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
+                    } else {
+                        $this->downloadFile($this->fixUrlForDownload( $src ), $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
+                    }
+                    $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
+                }           
+            }
+        }
+    }
+
+    public function doConversion() {
+        $this->initDomDocumentHtmlFiles();
+        $this->downloadRelativeFiles( self::cssRegExpStr, 'link', 'href', 'css' );
+        // $this->downloadCssFiles();
+        // $this->downloadJsFiles();
+        // $this->downloadImageFiles();
+
+        // $this->initCssFileLinksStorage();
+        // $this->initJsFileLinksStorage();
+        // $this->initImgFileLinksStorage();
+        // $this->initMediaFileLinksStorage();
+        // $this->saveDomDocumentHtmlFiles();
+        // var_dump($this->linkStorage);    
+    }
 
     public function createHtmlFiles ( ) {
         if ( !file_exists( $this->projectFolderPath ) ){
