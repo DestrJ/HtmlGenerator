@@ -8,5 +8,5 @@ $baseSourceUrls = array(
 );
 
 $hg = new HtmlGenerator($baseSourceUrls, dirname(__FILE__) . DIRECTORY_SEPARATOR . 'project');
-// $hg->createHtmlFiles();
+$hg->createHtmlFiles();
 $hg->doConversion();

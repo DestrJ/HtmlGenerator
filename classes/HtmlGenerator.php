@@ -2,8 +2,8 @@
 
 class HtmlGenerator {
 
-    const cssRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(css)/';// '(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(css)(\?[\d\w\-\_\=\&\%]*)?\/?$';
-    const jsRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(js)/'; //'(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(js)(\?[\d\w\-\_\=\&\%]*)?\/?$'
+    const cssRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(css)/';
+    const jsRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(js)/';
     const imagesRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(jpeg|jpg|gif|png|svg|bmp)/';
     const videoRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(mpg|avi|wmv|mov|ogg|webm|mp4)/';
     const audioRegExpStr = '/(\w|\d|\_)(\w|\d|\-|\_|\.)*\.(?i)(mid|midi|wma|aac|wav|ogg|mp3)/';
@@ -115,7 +115,7 @@ class HtmlGenerator {
                         $this->downloadFile($this->fixUrlForDownload( $src ), $filePath);
                     }
                     $this->linkStorage[$fileTypeName][$src] = $fileName;
-                    $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $newFileName);
+                    // $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $newFileName);
                 } else {
                     $this->linkStorage[$fileTypeName][$src] = $matches[0];
                     if ( $this->isFullMediaUrl ) {
@@ -123,25 +123,84 @@ class HtmlGenerator {
                     } else {
                         $this->downloadFile($this->fixUrlForDownload( $src ), $this->projectFolderPath . DIRECTORY_SEPARATOR . $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
                     }
-                    $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
+                    // $fileLink->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $matches[0]);
                 }           
             }
         }
     }
 
-    public function doConversion() {
-        $this->initDomDocumentHtmlFiles();
-        $this->downloadRelativeFiles( self::cssRegExpStr, 'link', 'href', 'css' );
-        // $this->downloadCssFiles();
-        // $this->downloadJsFiles();
-        // $this->downloadImageFiles();
+    private function fixDomRepresentRelativeFilePath ( $htmlTag, $tagAttr, $fileTypeName ) {
+        if ( empty($this->htmlFilesDomRepresent) ) {
+            return;
+        }
 
-        // $this->initCssFileLinksStorage();
-        // $this->initJsFileLinksStorage();
-        // $this->initImgFileLinksStorage();
-        // $this->initMediaFileLinksStorage();
-        // $this->saveDomDocumentHtmlFiles();
-        // var_dump($this->linkStorage);    
+        if ( !array_key_exists( $fileTypeName, $this->linkStorage ) ) {
+            return;
+        }
+
+        foreach ($this->htmlFilesDomRepresent as $fileName => $domDoc) {
+            $tagArray = $domDoc->getElementsByTagName($htmlTag);
+
+            if ( empty( $tagArray ) ) {
+                continue;
+            }
+
+            foreach ($tagArray as $tagItem) {
+                $src = $tagItem->getAttribute($tagAttr);
+
+                if ( array_key_exists($src, $this->linkStorage[$fileTypeName]) ) {
+                    $tagItem->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $this->linkStorage[$fileTypeName][$src]);
+                }
+            }                        
+        }
+    }
+
+    private function removeOldUrlFromTag ( $htmlTag, $tagAttr, $exceptionPattern = null ) {
+        if ( empty($this->htmlFilesDomRepresent) ) {
+            return;
+        }
+
+        foreach ($this->htmlFilesDomRepresent as $fileName => $domDoc) {
+            $tagArray = $domDoc->getElementsByTagName($htmlTag);
+            if ( empty( $tagArray ) ) {
+                continue;
+            }
+            foreach ($tagArray as $tagItem) {
+                $src = $tagItem->getAttribute($tagAttr);
+                $matches = array();
+                if ( isset( $exceptionPattern ) ) {
+                    preg_match( $exceptionPattern, $src, $matches );                
+                    if ( empty( $matches ) ) {
+                        $tagItem->setAttribute($tagAttr, '#');
+                    }
+                } else {
+                    $tagItem->setAttribute($tagAttr, '#');
+                }
+                
+            }
+        }
+    }
+
+    public function doConversion() {
+        // $this->initDomDocumentHtmlFiles();
+        $this->downloadRelativeFiles( self::cssRegExpStr, 'link', 'href', 'css' );
+        $this->downloadRelativeFiles( self::jsRegExpStr, 'script', 'src', 'js' );
+        $this->downloadRelativeFiles( self::imagesRegExpStr, 'img', 'src', 'images' );
+        $this->downloadRelativeFiles( self::videoRegExpStr, 'source', 'src', 'video' );
+        $this->downloadRelativeFiles( self::audioRegExpStr, 'source', 'src', 'audio' );
+
+        $this->removeOldUrlFromTag('a', 'href', '/^#.*/');
+        $this->removeOldUrlFromTag('form', 'action');
+
+        $this->fixDomRepresentRelativeFilePath( 'link', 'href', 'css' );
+        $this->fixDomRepresentRelativeFilePath( 'script', 'src', 'js' );
+        $this->fixDomRepresentRelativeFilePath( 'img', 'src', 'images' );
+        $this->fixDomRepresentRelativeFilePath( 'source', 'src', 'video' );
+        $this->fixDomRepresentRelativeFilePath( 'source', 'src', 'audio' );
+
+        $this->saveDomDocumentHtmlFiles();
+
+        echo 'Downloaded successfully (?)';
     }
 
     public function createHtmlFiles ( ) {
