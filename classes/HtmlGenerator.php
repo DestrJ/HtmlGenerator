@@ -149,7 +149,7 @@ class HtmlGenerator {
                 $src = $tagItem->getAttribute($tagAttr);
 
                 if ( array_key_exists($src, $this->linkStorage[$fileTypeName]) ) {
-                    $tagItem->setAttribute($tagAttr, $fileTypeName . DIRECTORY_SEPARATOR . $this->linkStorage[$fileTypeName][$src]);
+                    $tagItem->setAttribute($tagAttr, $fileTypeName . '/' . $this->linkStorage[$fileTypeName][$src]);
                 }
             }                        
         }
